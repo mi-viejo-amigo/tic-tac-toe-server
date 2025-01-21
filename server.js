@@ -2,23 +2,31 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import { calculateWinner, definedRole } from './utils.js';
 import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom } from './roomManager.js';
 
-const handlePlayerLeave = (socket, io) => {
+const handlePlayerLeave = (socket, io, roomData, reason) => {
   const room = socket.room;
   if (!room) return;
 
   removePlayerFromRoom(room, socket.id);
 
-  const roomData = getRoom(room);
+  if (reason === 'leaveRoom') {
+    console.log('Игрок покинул комнату по кнопке "Покинуть комнату"');
+  } else {
+    console.log('Игрок покинул комнату перезагрузившись или закрыв вкладку.');
+  }
 
   if (roomData) {
+    roomData.state.squares = Array(9).fill(null); // Сброс поля
     io.to(room).emit('updatePlayers', roomData.players);
-    io.to(room).emit('gemeRestarted', {
-      currentPlayer: 'X',
-      newSquares: Array(9).fill(null),
+    io.to(room).emit('gameRestarted', {
+        currentPlayer: 'X',
+        newSquares: roomData.state.squares,
+        players: roomData.players,
     });
-  }
+    socket.leave(room);
+}
 };
 
 const app = express();
@@ -41,25 +49,21 @@ io.on('connection', (socket) => {
     console.log('Игрок подключился:', socket.id);
   
     socket.on('joinRoom', ({ name, room, gameMode }) => {
-
         createRoom(room, gameMode);
 
         const roomData = getRoom(room);
 
         if (roomData.gameMode !== gameMode) {
-            console.log(`Комната ${room} имеет режим ${roomData.gameMode}`);
             socket.emit('error', { message: `Выберете режим: ${roomData.gameMode} что бы присоединиться` });
             return;
         }
 
-        // Проверка на количество игроков
         if (roomData.players.length >= 2) {
-            console.log(`Комната ${room} заполнена.`);
             socket.emit('error', { message: 'Комната уже заполнена. Выберите другую комнату.' });
             return;
         }
         socket.room = room;
-        socket.emit('allowed', { gameMode: roomData.gameMode });
+        socket.emit('allowed');
         // Присваиваем роль: первый игрок "X", второй "O"
         socket.on('readyForRole', ({ name, room }) => {
 
@@ -70,8 +74,8 @@ io.on('connection', (socket) => {
                 return;
             }
             // Добавляем игрока в комнату с его ролью
-            const role = roomData.players.length === 0 ? 'X' : 'O';
-            const player = { id: socket.id, name, role };
+            const role = definedRole(roomData.players);
+            const player = { id: socket.id, name, role, score: 0 };
             addPlayerToRoom(room, player);
 
             socket.join(room);
@@ -84,27 +88,101 @@ io.on('connection', (socket) => {
         })
         
         socket.on('move', ({ room, index, marker, player }) => {
-            roomData.state.squares[index] = marker;
-            roomData.state.currentPlayer = player === 'X' ? 'O' : 'X';
+          // const roomData = getRoom(room);
+          // if (!roomData) return;
+        
+          // Обновляем состояние клетки
+          roomData.state.squares[index] = marker;
+          roomData.state.currentPlayer = player === 'X' ? 'O' : 'X';
+        
+          // Проверяем победу
+          const gameResult = calculateWinner(roomData.state.squares);
+        
+          if (gameResult && gameResult.winner) {
+            const winnerPlayer = roomData.players.find((p) => p.role === gameResult.winner);
 
-            io.to(room).emit('moveMade', {
+            // Логика для режима Standard
+            if (roomData.gameMode === 'Standard') {
+              io.to(room).emit('stateUpdated', {
+                players: roomData.players,
+                currentPlayer: roomData.state.currentPlayer,
+                squares: roomData.state.squares,
+                winCombination: gameResult.combination,
+                winner: winnerPlayer?.name || null,
+              });
+              return; // Завершаем обработку для Standard
+            }
+
+            if (winnerPlayer) {
+              winnerPlayer.score += 1;
+        
+              // Проверяем, достиг ли игрок победного количества очков
+              if (winnerPlayer.score >= 3) {
+                // Отправляем UI-состояние с ПОБЕДИТЕЛЕМ
+                io.to(room).emit('stateUpdated', {
+                  players: roomData.players,
+                  currentPlayer: roomData.state.currentPlayer,
+                  squares: roomData.state.squares,
+                  winCombination: gameResult?.combination || null,
+                  winner: winnerPlayer.name,
+                });
+                return;
+              }
+        
+              // Отправляем UI-состояние с выделенной выигрышной комбинацией
+              io.to(room).emit('stateUpdated', {
+                players: roomData.players,
+                currentPlayer: roomData.state.currentPlayer,
+                squares: roomData.state.squares,
+                winCombination: gameResult.combination,
+                winner: winnerPlayer.name,
+              });
+        
+              // Задержка перед очисткой выигрышной комбинации
+              setTimeout(() => {
+                gameResult.combination.forEach((index) => {
+                  roomData.state.squares[index] = null;
+                });
+        
+                io.to(room).emit('stateUpdated', {
+                  players: roomData.players,
+                  currentPlayer: roomData.state.currentPlayer,
+                  squares: roomData.state.squares,
+                  winCombination: null, // Сброс выделения
+                  winner: null,
+                });
+              }, 1000); // Задержка в 1 секунду
+            }
+          } else {
+            // Отправляем обновленное состояние всем игрокам
+            io.to(room).emit('stateUpdated', {
+              players: roomData.players,
               currentPlayer: roomData.state.currentPlayer,
-              newSquares: roomData.state.squares
+              squares: roomData.state.squares,
+              winCombination: null,
+              winner: null,
             });
+          }
         });
-
-        socket.on('restartGame', ({room}) => {
-            roomData.state.squares = Array(9).fill(null);
-            roomData.state.currentPlayer = 'X';
-
-            io.to(room).emit('gemeRestarted', {
-              currentPlayer: roomData.state.currentPlayer,
-              newSquares: roomData.state.squares
-            });
+        
+        socket.on('restartGame', ({ room }) => {
+        
+          roomData.state.squares = Array(9).fill(null);
+          roomData.state.currentPlayer = Math.random() > 0.5 ? 'X' : 'O';
+          roomData.players.forEach((player) => (player.score = 0));
+        
+          io.to(room).emit('stateUpdated', {
+            players: roomData.players,
+            currentPlayer: roomData.state.currentPlayer,
+            squares: roomData.state.squares,
+            winCombination: null,
+            winner: null,
+          });
         });
+        
 
-        socket.on('leaveRoom', () => handlePlayerLeave(socket, io));
-        socket.on('disconnect', () => handlePlayerLeave(socket, io));
+        socket.on('leaveRoom', () => handlePlayerLeave(socket, io, roomData, 'leaveRoom'));
+        socket.on('disconnect', () => handlePlayerLeave(socket, io, roomData, 'disconnected'));
     });
   });
   
