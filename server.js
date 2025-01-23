@@ -5,28 +5,24 @@ import cors from 'cors';
 import { calculateWinner, definedRole } from './utils.js';
 import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom } from './roomManager.js';
 
-const handlePlayerLeave = (socket, io, roomData, reason) => {
-  const room = socket.room;
-  if (!room) return;
+const handlePlayerLeave = (socket, io, roomName) => {
+  
 
-  removePlayerFromRoom(room, socket.id);
+  removePlayerFromRoom(roomName, socket.id);
 
-  if (reason === 'leaveRoom') {
-    console.log('Игрок покинул комнату по кнопке "Покинуть комнату"');
-  } else {
-    console.log('Игрок покинул комнату перезагрузившись или закрыв вкладку.');
-  }
+  const roomData = getRoom(roomName);
+  if (!roomData) return;
 
   if (roomData) {
     roomData.state.squares = Array(9).fill(null); // Сброс поля
-    io.to(room).emit('updatePlayers', roomData.players);
-    io.to(room).emit('gameRestarted', {
+    io.to(roomName).emit('updatePlayers', roomData.players);
+    io.to(roomName).emit('gameRestarted', {
         currentPlayer: 'X',
         newSquares: roomData.state.squares,
         players: roomData.players,
     });
-    socket.leave(room);
-}
+  }
+  socket.leave(roomName);
 };
 
 const app = express();
@@ -49,8 +45,8 @@ io.on('connection', (socket) => {
     console.log('Игрок подключился:', socket.id);
   
     socket.on('joinRoom', ({ name, room, gameMode }) => {
-        createRoom(room, gameMode);
 
+        createRoom(room, gameMode);
         const roomData = getRoom(room);
 
         if (roomData.gameMode !== gameMode) {
@@ -66,13 +62,14 @@ io.on('connection', (socket) => {
         socket.emit('allowed');
         // Присваиваем роль: первый игрок "X", второй "O"
         socket.on('readyForRole', ({ name, room }) => {
-
+            const roomData = getRoom(room);
             // Проверка: если игрок уже есть в комнате, не добавляем его снова
             const isPlayerExist = roomData.players.some((player) => player.id === socket.id);
             if (isPlayerExist) {
                 console.log(`Игрок ${name} уже зарегистрирован в комнате ${room}`);
                 return;
             }
+
             // Добавляем игрока в комнату с его ролью
             const role = definedRole(roomData.players);
             const player = { id: socket.id, name, role, score: 0 };
@@ -85,22 +82,34 @@ io.on('connection', (socket) => {
             socket.emit('playerRole', { role });
             // Обновление списка игроков для всех в комнате
             io.to(room).emit('updatePlayers', roomData.players);
+
         })
         
         socket.on('move', ({ room, index, marker, player }) => {
-          // const roomData = getRoom(room);
-          // if (!roomData) return;
         
           // Обновляем состояние клетки
           roomData.state.squares[index] = marker;
           roomData.state.currentPlayer = player === 'X' ? 'O' : 'X';
         
           // Проверяем победу
-          const gameResult = calculateWinner(roomData.state.squares);
-        
-          if (gameResult && gameResult.winner) {
-            const winnerPlayer = roomData.players.find((p) => p.role === gameResult.winner);
+          const gameResult = calculateWinner(roomData.state.squares, roomData.gameMode);
+          console.log(gameResult);
+          let winnerPlayer = null
 
+          if (gameResult && gameResult.winner) {
+            if (gameResult.winner === 'Ничья') {
+              io.to(room).emit('stateUpdated', {
+                  players: roomData.players,
+                  currentPlayer: roomData.state.currentPlayer,
+                  squares: roomData.state.squares,
+                  winCombination: null,
+                  winner: 'Ничья',
+              });
+              return;
+            } else {
+              winnerPlayer = roomData.players.find((p) => p.role === gameResult.winner);
+            }
+            console.log(winnerPlayer);
             // Логика для режима Standard
             if (roomData.gameMode === 'Standard') {
               io.to(room).emit('stateUpdated', {
@@ -108,12 +117,12 @@ io.on('connection', (socket) => {
                 currentPlayer: roomData.state.currentPlayer,
                 squares: roomData.state.squares,
                 winCombination: gameResult.combination,
-                winner: winnerPlayer?.name || null,
+                winner: winnerPlayer.name,
               });
               return; // Завершаем обработку для Standard
             }
 
-            if (winnerPlayer) {
+            if (winnerPlayer && winnerPlayer.name !== 'Ничья') {
               winnerPlayer.score += 1;
         
               // Проверяем, достиг ли игрок победного количества очков
@@ -123,7 +132,7 @@ io.on('connection', (socket) => {
                   players: roomData.players,
                   currentPlayer: roomData.state.currentPlayer,
                   squares: roomData.state.squares,
-                  winCombination: gameResult?.combination || null,
+                  winCombination: gameResult.combination,
                   winner: winnerPlayer.name,
                 });
                 return;
@@ -152,7 +161,7 @@ io.on('connection', (socket) => {
                   winner: null,
                 });
               }, 1000); // Задержка в 1 секунду
-            }
+            } 
           } else {
             // Отправляем обновленное состояние всем игрокам
             io.to(room).emit('stateUpdated', {
@@ -179,10 +188,10 @@ io.on('connection', (socket) => {
             winner: null,
           });
         });
-        
 
-        socket.on('leaveRoom', () => handlePlayerLeave(socket, io, roomData, 'leaveRoom'));
-        socket.on('disconnect', () => handlePlayerLeave(socket, io, roomData, 'disconnected'));
+        socket.on('disconnect', () => {
+          handlePlayerLeave(socket, io, room);
+        });
     });
   });
   
