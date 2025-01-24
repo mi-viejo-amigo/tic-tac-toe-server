@@ -174,12 +174,13 @@ io.on('connection', (socket) => {
           }
         });
         
-        socket.on('restartGame', ({ room }) => {
+        socket.on('restartGame', ({ room, saveScores = false }) => {
         
           roomData.state.squares = Array(9).fill(null);
           roomData.state.currentPlayer = Math.random() > 0.5 ? 'X' : 'O';
-          roomData.players.forEach((player) => (player.score = 0));
-        
+          if (!saveScores) {
+            roomData.players.forEach((player) => (player.score = 0));
+          }
           io.to(room).emit('stateUpdated', {
             players: roomData.players,
             currentPlayer: roomData.state.currentPlayer,
