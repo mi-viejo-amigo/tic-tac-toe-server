@@ -3,7 +3,8 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { calculateWinner, definedRole } from './utils.js';
-import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom } from './roomManager.js';
+import { handleWinner, resetRoomState, sendRoomState } from './gameHandlers.js';
+import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, logRooms } from './roomManager.js';
 
 const handlePlayerLeave = (socket, io, roomName) => {
   
@@ -43,7 +44,6 @@ const io = new Server(server, {
 
 io.on('connection', (socket) => {
     console.log('Игрок подключился:', socket.id);
-  
     socket.on('joinRoom', ({ name, room, gameMode }) => {
 
         createRoom(room, gameMode);
@@ -82,115 +82,29 @@ io.on('connection', (socket) => {
             socket.emit('playerRole', { role });
             // Обновление списка игроков для всех в комнате
             io.to(room).emit('updatePlayers', roomData.players);
-
         })
         
         socket.on('move', ({ room, index, marker, player }) => {
-        
+          const roomData = getRoom(room);
           // Обновляем состояние клетки
           roomData.state.squares[index] = marker;
           roomData.state.currentPlayer = player === 'X' ? 'O' : 'X';
         
           // Проверяем победу
           const gameResult = calculateWinner(roomData.state.squares, roomData.gameMode);
-          console.log(gameResult);
-          let winnerPlayer = null
-
-          if (gameResult && gameResult.winner) {
-            if (gameResult.winner === 'Ничья') {
-              io.to(room).emit('stateUpdated', {
-                  players: roomData.players,
-                  currentPlayer: roomData.state.currentPlayer,
-                  squares: roomData.state.squares,
-                  winCombination: null,
-                  winner: 'Ничья',
-              });
-              return;
-            } else {
-              winnerPlayer = roomData.players.find((p) => p.role === gameResult.winner);
-            }
-            console.log(winnerPlayer);
-            // Логика для режима Standard
-            if (roomData.gameMode === 'Standard') {
-              io.to(room).emit('stateUpdated', {
-                players: roomData.players,
-                currentPlayer: roomData.state.currentPlayer,
-                squares: roomData.state.squares,
-                winCombination: gameResult.combination,
-                winner: winnerPlayer.name,
-              });
-              return; // Завершаем обработку для Standard
-            }
-
-            if (winnerPlayer && winnerPlayer.name !== 'Ничья') {
-              winnerPlayer.score += 1;
-        
-              // Проверяем, достиг ли игрок победного количества очков
-              if (winnerPlayer.score >= 3) {
-                // Отправляем UI-состояние с ПОБЕДИТЕЛЕМ
-                io.to(room).emit('stateUpdated', {
-                  players: roomData.players,
-                  currentPlayer: roomData.state.currentPlayer,
-                  squares: roomData.state.squares,
-                  winCombination: gameResult.combination,
-                  winner: winnerPlayer.name,
-                });
-                return;
-              }
-        
-              // Отправляем UI-состояние с выделенной выигрышной комбинацией
-              io.to(room).emit('stateUpdated', {
-                players: roomData.players,
-                currentPlayer: roomData.state.currentPlayer,
-                squares: roomData.state.squares,
-                winCombination: gameResult.combination,
-                winner: winnerPlayer.name,
-              });
-        
-              // Задержка перед очисткой выигрышной комбинации
-              setTimeout(() => {
-                gameResult.combination.forEach((index) => {
-                  roomData.state.squares[index] = null;
-                });
-        
-                io.to(room).emit('stateUpdated', {
-                  players: roomData.players,
-                  currentPlayer: roomData.state.currentPlayer,
-                  squares: roomData.state.squares,
-                  winCombination: null, // Сброс выделения
-                  winner: null,
-                });
-              }, 1000); // Задержка в 1 секунду
-            } 
-          } else {
-            // Отправляем обновленное состояние всем игрокам
-            io.to(room).emit('stateUpdated', {
-              players: roomData.players,
-              currentPlayer: roomData.state.currentPlayer,
-              squares: roomData.state.squares,
-              winCombination: null,
-              winner: null,
-            });
-          }
+          handleWinner(io, room, roomData, gameResult);
         });
         
         socket.on('restartGame', ({ room, saveScores = false }) => {
-        
-          roomData.state.squares = Array(9).fill(null);
-          roomData.state.currentPlayer = Math.random() > 0.5 ? 'X' : 'O';
-          if (!saveScores) {
-            roomData.players.forEach((player) => (player.score = 0));
-          }
-          io.to(room).emit('stateUpdated', {
-            players: roomData.players,
-            currentPlayer: roomData.state.currentPlayer,
-            squares: roomData.state.squares,
-            winCombination: null,
-            winner: null,
-          });
+          const roomData = getRoom(room);
+          resetRoomState(roomData, saveScores);
+          sendRoomState(io, room, roomData, { winCombination: null, winner: null });
         });
 
         socket.on('disconnect', () => {
+          // Логирование отпечатка комнаты во время выхода игрока
+          logRooms()
+          ////
           handlePlayerLeave(socket, io, room);
         });
     });

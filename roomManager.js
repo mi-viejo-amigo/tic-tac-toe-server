@@ -30,4 +30,31 @@ const removePlayerFromRoom = (room, playerId) => {
   }
 };
 
-export { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom };
+const logRooms = () => {
+  console.log('\n==== Current Rooms ====');
+  
+  Object.entries(rooms).forEach(([roomName, roomData]) => {
+    console.log(`\nRoom: ${roomName}`);
+    console.log('Game Mode:', roomData.gameMode);
+    console.log('Players:');
+    console.table(
+      roomData.players.map(player => ({
+        ID: player.id,
+        Name: player.name,
+        Role: player.role,
+        Score: player.score,
+      }))
+    );
+    console.log('State:');
+    console.table([
+      { Squares: JSON.stringify(roomData.state.squares), CurrentPlayer: roomData.state.currentPlayer },
+    ]);
+  });
+
+  if (Object.keys(rooms).length === 0) {
+    console.log('No active rooms.');
+  }
+  console.log('========================\n');
+};
+
+export { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, logRooms };
