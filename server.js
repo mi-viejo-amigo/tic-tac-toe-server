@@ -2,9 +2,9 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { calculateWinner, definedRole } from './utils.js';
+import { calculateWinner } from './utils.js';
 import { handleWinner, resetRoomState, sendRoomState } from './gameHandlers.js';
-import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, logRooms } from './roomManager.js';
+import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, isPlayerExist, createPlayer, logRooms } from './roomManager.js';
 
 const handlePlayerLeave = (socket, io, roomName) => {
   
@@ -60,27 +60,22 @@ io.on('connection', (socket) => {
         }
         socket.room = room;
         socket.emit('allowed');
-        // Присваиваем роль: первый игрок "X", второй "O"
+        
         socket.on('readyForRole', ({ name, room }) => {
             const roomData = getRoom(room);
-            // Проверка: если игрок уже есть в комнате, не добавляем его снова
-            const isPlayerExist = roomData.players.some((player) => player.id === socket.id);
-            if (isPlayerExist) {
-                console.log(`Игрок ${name} уже зарегистрирован в комнате ${room}`);
-                return;
-            }
+            
+            if (isPlayerExist(room, name, socket.id)) return
 
-            // Добавляем игрока в комнату с его ролью
-            const role = definedRole(roomData.players);
-            const player = { id: socket.id, name, role, score: 0 };
+            const player = createPlayer(socket.id, name, roomData.players, roomData.gameMode);
+
+            // логируем юзера, что бы посмотреть скиллы.
+            console.log(player)
+            // 
             addPlayerToRoom(room, player);
 
             socket.join(room);
-            console.log(`${name} вошел в комнату ${room} как ${role}`);
-
-            // Сообщение о роли игрока
-            socket.emit('playerRole', { role });
-            // Обновление списка игроков для всех в комнате
+            console.log(`${name} вошел в комнату ${room}`);
+            socket.emit('playerRole', { role: player.role, skills: player.skills });
             io.to(room).emit('updatePlayers', roomData.players);
         })
         

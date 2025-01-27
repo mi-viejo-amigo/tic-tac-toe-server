@@ -1,3 +1,4 @@
+import { definedRole, defineSkills } from "./utils.js";
 const rooms = {};
 
 const createRoom = (room, gameMode) => {
@@ -14,6 +15,25 @@ const createRoom = (room, gameMode) => {
 };
 
 const getRoom = (room) => rooms[room];
+
+const isPlayerExist = (room, name, playerId) => {
+  const isExistInRoom = rooms[room].players.some((player) => player.id === playerId);
+  if (isExistInRoom) {
+    console.log(`Игрок ${name} уже зарегистрирован в комнате ${room}`);
+
+  }
+  return isExistInRoom;
+}
+
+const createPlayer = (id, name, players, gameMode) => {
+  const role = definedRole(players);
+  const player = { id, name, role, score: 0 }
+  if (gameMode === 'Half') {
+    player.skills = defineSkills();
+  }
+  
+  return player;
+}
 
 const addPlayerToRoom = (room, player) => {
   if (rooms[room]) {
@@ -57,4 +77,4 @@ const logRooms = () => {
   console.log('========================\n');
 };
 
-export { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, logRooms };
+export { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, isPlayerExist, createPlayer, logRooms };

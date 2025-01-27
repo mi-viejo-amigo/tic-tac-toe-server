@@ -58,4 +58,21 @@ export const definedRole = (roomPlayers) => {
   
     // Если уже два игрока, не назначаем роль (ошибка)
     throw new Error('Комната уже заполнена.');
+};
+
+export const defineSkills = () => {
+  const skillsConfig = {
+    borrow: { base: 3, max: 5, chance: 0.5 },
+    lock: { base: 0, max: 1, chance: 0.5 },
+    unlock: { base: 0, max: 1, chance: 0.5 },
   };
+
+  const skills = {};
+
+  Object.keys(skillsConfig).forEach((skill) => {
+    const { base, max, chance } = skillsConfig[skill];
+    skills[skill] = Math.random() < chance ? max : base;
+  });
+
+  return skills;
+};
