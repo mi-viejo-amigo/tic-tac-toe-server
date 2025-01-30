@@ -63,8 +63,8 @@ export const definedRole = (roomPlayers) => {
 export const defineSkills = () => {
   const skillsConfig = {
     borrow: { base: 3, max: 5, chance: 0.5 },
-    lock: { base: 0, max: 1, chance: 0.5 },
-    unlock: { base: 0, max: 1, chance: 0.5 },
+    lock: { base: 1, max: 2, chance: 0.5 },
+    unlock: { base: 1, max: 2, chance: 0.5 },
   };
 
   const skills = {};

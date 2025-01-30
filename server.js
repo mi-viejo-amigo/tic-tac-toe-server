@@ -70,17 +70,51 @@ io.on('connection', (socket) => {
 
             // логируем юзера, что бы посмотреть скиллы.
             console.log(player)
+            console.log(`${name} вошел в комнату ${room}, со скилами: ${JSON.stringify(player.skills)}`);
             // 
             addPlayerToRoom(room, player);
 
             socket.join(room);
-            console.log(`${name} вошел в комнату ${room}`);
             socket.emit('playerRole', { role: player.role, skills: player.skills });
             io.to(room).emit('updatePlayers', roomData.players);
         })
-        
+
+
+        socket.on('lock', ({ room, index, player, lockAction}) => {
+          const roomData = getRoom(room);
+          
+          if (roomData.gameMode === 'Half') {
+            if (lockAction === 'lock') {
+              roomData.state.locks[index] = 7; // Блокируем клетку на 7 хода
+              io.to(room).emit('locksUpdated', roomData.state.locks);
+              return;
+            } else if (lockAction === 'unlock') {
+              delete roomData.state.locks[index]; // Удаляем блок, если он больше не нужен
+              io.to(room).emit('locksUpdated', roomData.state.locks);
+              return;
+            }
+          }
+        })
+
         socket.on('move', ({ room, index, marker, player }) => {
           const roomData = getRoom(room);
+          if (player !== roomData.state.currentPlayer) {
+            console.log('Неправильный ход.');
+            return;
+          }
+
+          if (Object.keys(roomData.state.locks).length > 0) {
+            Object.keys(roomData.state.locks).forEach((lockedIndex) => {
+              const currentLock = roomData.state.locks[lockedIndex];
+              if (currentLock > 1) {
+                roomData.state.locks[lockedIndex] -= 1;
+              } else {
+                delete roomData.state.locks[lockedIndex]; // Удаляем блок, если он больше не нужен
+              }
+            });
+            io.to(room).emit('locksUpdated', roomData.state.locks);
+          }
+
           // Обновляем состояние клетки
           roomData.state.squares[index] = marker;
           roomData.state.currentPlayer = player === 'X' ? 'O' : 'X';
@@ -90,10 +124,10 @@ io.on('connection', (socket) => {
           handleWinner(io, room, roomData, gameResult);
         });
         
-        socket.on('restartGame', ({ room, saveScores = false }) => {
+        socket.on('restartGame', ({ room, saveScores = false, updateSkills = false }) => {
           const roomData = getRoom(room);
-          resetRoomState(roomData, saveScores);
-          sendRoomState(io, room, roomData, { winCombination: null, winner: null });
+          resetRoomState(roomData, saveScores, updateSkills);
+          sendRoomState(io, room, roomData, updateSkills, { winCombination: null, winner: null });
         });
 
         socket.on('disconnect', () => {

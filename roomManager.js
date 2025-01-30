@@ -9,6 +9,7 @@ const createRoom = (room, gameMode) => {
       state: {
         squares: Array(9).fill(null),
         currentPlayer: 'X',
+        locks: {}, // Состояние заблокированных клеток
       },
     };
   }
@@ -63,6 +64,7 @@ const logRooms = () => {
         Name: player.name,
         Role: player.role,
         Score: player.score,
+        Skills: player.skills
       }))
     );
     console.log('State:');
