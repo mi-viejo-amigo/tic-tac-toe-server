@@ -5,6 +5,8 @@ const createRoom = (room, gameMode) => {
   if (!rooms[room]) {
     rooms[room] = {
       gameMode,
+      history: [],
+      aiMessages: [],
       players: [],
       state: {
         squares: Array(9).fill(null),
@@ -27,7 +29,13 @@ const isPlayerExist = (room, name, playerId) => {
 }
 
 const createPlayer = (id, name, players, gameMode) => {
-  const role = definedRole(players);
+  let role;
+  if (gameMode === 'AI_Standard') {
+    role = 'X'
+  } else {
+    role = definedRole(players);
+  }
+  
   const player = { id, name, role, score: 0 }
   if (gameMode === 'Half') {
     player.skills = defineSkills();
@@ -45,7 +53,7 @@ const addPlayerToRoom = (room, player) => {
 const removePlayerFromRoom = (room, playerId) => {
   if (rooms[room]) {
     rooms[room].players = rooms[room].players.filter((p) => p.id !== playerId);
-    if (rooms[room].players.length === 0) {
+    if (rooms[room].players.length === 0 || rooms[room].gameMode === 'AI_Standard' && rooms[room].players.length < 2) {
       delete rooms[room];
     }
   }

@@ -23,7 +23,7 @@ export const sendRoomState = (io, room, roomData, updeteSkills = false, override
     const winnerPlayer = roomData.players.find((p) => p.role === gameResult.winner);
     if (!winnerPlayer) return;
   
-    if (roomData.gameMode === 'Standard') {
+    if (roomData.gameMode === 'Standard' || roomData.gameMode === 'AI_Standard') {
       return sendRoomState(io, room, roomData, false, {
         winCombination: gameResult.combination,
         winner: winnerPlayer.name,
@@ -58,6 +58,11 @@ export const sendRoomState = (io, room, roomData, updeteSkills = false, override
   export const resetRoomState = (roomData, saveScores = false, updateSkills = false) => {
     roomData.state.squares = Array(9).fill(null);
     roomData.state.currentPlayer = Math.random() > 0.5 ? 'X' : 'O';
+    if (roomData.gameMode === 'AI_Standard') {
+      roomData.state.currentPlayer = 'X'
+      roomData.aiMessages = [];
+      roomData.history = [];
+    }
     if (!saveScores) {
       roomData.players.forEach((player) => (player.score = 0));
     }
