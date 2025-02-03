@@ -1,8 +1,8 @@
-export const WINNING_COMBINATIONS = JSON.stringify([
+export const WINNING_COMBINATIONS = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8], // Горизонтальные
   [0, 3, 6], [1, 4, 7], [2, 5, 8], // Вертикальные
   [0, 4, 8], [2, 4, 6]  // Диагональные
-])
+];
 
 export const calculateWinner = (squares, gameMode) => {
   const lines = [
@@ -83,6 +83,20 @@ export const defineSkills = () => {
   return skills;
 };
 
+export function formatMovesHistory(moves) {
+  if (!moves || moves.length === 0) {
+    return "No moves history.";
+  }
+
+  return moves
+    .slice(-3) // Берём последние 3 хода
+    .map(
+      (move) =>
+        `${move.moveNumber}. ${move.player === "user" ? "User" : "AI-bot"} placed ${move.role} at position ${move.position}`
+    )
+    .join("\n");
+}
+
 // const systemPrompt = `
 //       Ты профессиональный игрок в крестики-нолики. Твоя задача — обыграть соперника, анализируя комбинации.
 
@@ -102,3 +116,75 @@ export const defineSkills = () => {
 //       Текущая доска: [ '${opponent}', null, '${role}', null, '${opponent}', null, null, null, null ] (тут противник играет за "${opponent}" и угрожает выиграть в следующем ходу походив в индекс 8, надо срочно заблокировать ему возможность выиграть пока наш ход, поставив ${role} в индекс 8)
 //       Ответ: "Индекс: 8"
 //     `.trim();
+
+// const systemPrompt = `
+// You are an AI-bot playing tic-tac-toe. Your task is to evaluate the current board state and make the optimal move. You play as "${role}", and your opponent plays as "${opponent}".
+
+// **Rules for making a move:**
+
+// 1 **BLOCK OPPONENT'S WINNING MOVE FIRST**  
+//  - If the opponent (${opponent}) has two marks in a winning combination and the third spot is empty → **immediately block it!**
+
+// 2 **MAKE A WINNING MOVE SECOND**  
+//  - If you (${role}) have two marks in a winning combination and the third spot is empty → **immediately place your mark there to win!**
+
+// 3 **STRATEGIC MOVES (ONLY IF NO THREAT OR WIN)**
+//  - If the center (Index: 4) is empty, place "${role}" there.
+//  - Otherwise, pick the best available move following the **WINNING_COMBINATIONS**:  ${JSON.stringify(WINNING_COMBINATIONS)}
+// **Current board state:**  
+// ${JSON.stringify(boardArray)}
+   
+//   0 | 1 | 2    =>    . | . | .
+//   ---+---+---
+//   3 | 4 | 5    =>    . | . | .
+//   ---+---+---
+//   6 | 7 | 8    =>    . | . | .
+
+//   or in array notation:
+//   [0, 1, 2, 3, 4, 5, 6, 7, 8]
+//   but clear desk looks like: [null, null, null, null, null, null, null, null, null] , "null" means empty cell you can play there once you make your move.
+
+// Keep in mind:
+// - "${role}" represents your positions on the board array.
+// - "${opponent}" represents your opponent's positions on the board array.
+// - "null" represents an empty position where you can place your move.
+// **Your move must be returned in this format:**  
+//   "Index: N" (where N is the chosen position).
+// `.trim();
+
+
+  //   const userPrompt = `
+  //   The game continues.
+  //   Here is the moves history:
+  //   ${movesHistory}
+
+  //   Your turn! Place ${role} on the board to prevent me from winning!
+  //   My last move was at position: ${usersStep}, playing as "${opponent}".
+  //   Current board state: board = ${JSON.stringify(boardArray)}.
+  //   Respond only with: "Index: N".
+  // `.trim();
+
+  export function findStrategicMove(squares, role) {
+    const opponent = (role === 'X') ? 'O' : 'X';
+  
+    let winningMove = null;
+    let blockingMove = null;
+  
+    WINNING_COMBINATIONS.forEach(combination => {
+      const cells = combination.map(index => squares[index]);
+  
+      const botCount = cells.filter(cell => cell === role).length;
+      const opponentCount = cells.filter(cell => cell === opponent).length;
+      const emptyCells = combination.filter(index => squares[index] === null);
+  
+      if (botCount === 2 && emptyCells.length === 1) {
+        // Если у бота 2 клетки заняты, а 1 пустая – это победный ход
+        winningMove = emptyCells[0];
+      } else if (opponentCount === 2 && emptyCells.length === 1) {
+        // Если у противника 2 клетки заняты, а 1 пустая – это угроза
+        blockingMove = emptyCells[0];
+      }
+    });
+  
+    return winningMove !== null ? winningMove : blockingMove;
+  }

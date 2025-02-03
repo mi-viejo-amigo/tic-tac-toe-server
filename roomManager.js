@@ -7,6 +7,7 @@ const createRoom = (room, gameMode) => {
       gameMode,
       history: [],
       aiMessages: [],
+      moves: [],
       players: [],
       state: {
         squares: Array(9).fill(null),

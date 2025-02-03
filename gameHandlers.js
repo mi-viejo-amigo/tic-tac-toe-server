@@ -62,6 +62,8 @@ export const sendRoomState = (io, room, roomData, updeteSkills = false, override
       roomData.state.currentPlayer = 'X'
       roomData.aiMessages = [];
       roomData.history = [];
+      roomData.moves = [];
+      
     }
     if (!saveScores) {
       roomData.players.forEach((player) => (player.score = 0));

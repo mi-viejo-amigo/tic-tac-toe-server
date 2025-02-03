@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { calculateWinner, WINNING_COMBINATIONS } from './utils.js';
+import { calculateWinner, WINNING_COMBINATIONS, formatMovesHistory, findStrategicMove } from './utils.js';
 import { handleWinner, resetRoomState, sendRoomState } from './gameHandlers.js';
 import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, isPlayerExist, createPlayer, logRooms } from './roomManager.js';
 
@@ -119,7 +119,6 @@ io.on('connection', (socket) => {
         socket.on('move', async ({ room, index, marker, player }) => {
           const roomData = getRoom(room);
 
-          roomData.history.push(index);
 
           if (player !== roomData.state.currentPlayer) {
             console.log('Неправильный ход.');
@@ -137,11 +136,13 @@ io.on('connection', (socket) => {
             });
             io.to(room).emit('locksUpdated', roomData.state.locks);
           }
+          console.log('Ход игрока', player, 'в клетку', index);
 
           // Обновляем состояние клетки
           roomData.state.squares[index] = marker;
           roomData.state.currentPlayer = player === 'X' ? 'O' : 'X';
-        
+          const boardString = roomData.state.squares.map((v) => (v ? v : ".")).join("");
+          console.log('Обновленное состояние клеток:', boardString);
           // Проверяем победу
           const gameResult = calculateWinner(roomData.state.squares, roomData.gameMode);
           handleWinner(io, room, roomData, gameResult);
@@ -153,7 +154,7 @@ io.on('connection', (socket) => {
             );
             if (botPlayer) {
               // Вызываем ход бота
-              await handleAiMove(io, room, roomData, botPlayer.role);
+              await handleAiMove(io, room, roomData, botPlayer.role, index);
             }
           }
 
@@ -184,12 +185,13 @@ io.on('connection', (socket) => {
   // ------------------ AI LOGIC ------------------
 
 // Вызываем, когда ход бота
-export async function handleAiMove(io, room, roomData, role) {
+export async function handleAiMove(io, room, roomData, role, index) {
+  const usersStep = index;
   const squares = roomData.state.squares;
 
   // Попросим OpenAI выбрать индекс
-  let aiIndex = await getAiIndexFromOpenAI(squares, role, roomData);
-  console.log('AI index:', aiIndex);
+  let aiIndex = await getAiIndexFromOpenAI(squares, role, roomData, usersStep);
+
   // Если индекс некорректный или клетка занята, ставим в первую свободную
   if (
     aiIndex < 0 ||
@@ -202,7 +204,7 @@ export async function handleAiMove(io, room, roomData, role) {
     }
   }
 
-  roomData.history.push(aiIndex)
+  roomData.history.push({client: usersStep, bot: aiIndex});
   // Ставим ход бота
   squares[aiIndex] = role;
   // Меняем ход на противника
@@ -216,77 +218,103 @@ export async function handleAiMove(io, room, roomData, role) {
 }
 
 // Запрос к OpenAI, возвращает индекс (0..8) или -1 при ошибке
-async function getAiIndexFromOpenAI(squares, role, roomData) {
+async function getAiIndexFromOpenAI(squares, role, roomData, usersStep) {
   try {
     // Инициируем массив истории, если не существует
     if (!roomData.aiMessages) {
       roomData.aiMessages = [];
     }
+    if (!roomData.moves) {
+      roomData.moves = [];
+    }
 
     const opponent = (role === 'X') ? 'O' : 'X';
-    const boardArray = squares.map((v, i) => v ? v : 'null')
-    console.log('AI board:', boardArray)
+    // Преобразуем доску в строку (для компактности)
+    const boardString = squares.map((v) => (v ? v : ".")).join("");
 
-    const systemPrompt = `
-      Ты играеш в tic-tac-toe. Задача — принимать текущее состояние доски и делать оптимальный ход. Ты играешь за "${role}", а противник за "${opponent}".
-      Просто делай ход учитыва что "${role}" в полученном от юзера массиве это твои позиции, "${opponent}"- позиции соперника, а "null" пустое поле куда можно сходить.
-      Ответ верни числом в формате: "Индекс: N". где N - выбранный индекс поля массива Доски. 
+    // Добавляем ход в историю
+    roomData.moves.push({
+      moveNumber: roomData.moves.length + 1, // Номер хода
+      player: 'user',                       // Кто сделал ход ("user" или "bot")
+      role: opponent,                           // Символ (X или O)
+      position: usersStep,                   // Индекс на доске
+    });
+
+    const strategicMove = findStrategicMove(squares, role);
+    if (strategicMove !== null) {
+      console.log(`Strategic move found: ${strategicMove}`);
+    }
+
+    const movesHistory = formatMovesHistory(roomData.moves);
+
+    // ---------- PROMPT ДЛЯ AI -----------
+    const userPrompt = 
+    strategicMove ?
+      `Y found strategic move for you, it is: ${strategicMove}, just return this value, no words`
+      : 
+      `
+      The game continues.
+      Moves history:
+      ${movesHistory}
+      
+      Your turn! Place ${role} on the board!
+      Last move by "User": ${opponent} played at position ${usersStep}.
+      Current board state: "${boardString}" (use . for empty cells).
+      Respond **only** with Index of cell you want to play, no words.
     `.trim();
 
-  
-    // ---------- USER PROMPT (текущая доска) -----------
-    // Показываем текущее состояние, просим вернуть индекс. Коротко повторяем роль.
-    const userPrompt = `
-      Твой ход!
-      Текущая доска: board = ${JSON.stringify(boardArray)}, 
-      Ты (бот) ${role}, соперник ${opponent}.
-      верни числом в формате: "Индекс: N"
-      `.trim();
 
-    console.log(userPrompt)
+
     // Собираем полный массив сообщений. В самом начале systemPrompt,
     // затем все старые сообщения roomData.aiMessages,
     // и в конце новое user-сообщение.
     const conversation = [
       {
-        role: 'system',
-        content: systemPrompt
+        role: "user",
+        content:
+          `You are an AI-bot playing with role "${role}" tic-tac-toe with against a 'user' as opponent plays as "${opponent}".
+            Make the best move following optimal strategy to win him.
+            **Rules for making a move:**
+          1 **Strate moves**
+           - If user says that he found strategic move for you, you can rely on it and return this value, no words.
+          2 **STRATEGIC MOVES (ONLY IF NO THREAT OR WIN)**
+           - If the center (Index: 4) is empty, place "${role}" there.
+          `,
       },
-      // ... история (пары user/assistant), если она есть
+      // ... история (если есть)
       ...roomData.aiMessages,
-      {
-        role: 'user',
-        content: userPrompt
-      }
+      { role: "user", content: userPrompt },
     ];
 
     
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: conversation,
-    });
+        // Запрос к OpenAI
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: conversation,
+        });
 
     const text = completion.choices[0].message?.content?.trim() || '';
-    console.log('completion:', completion);
-    console.log('text:', text);
-    // Сохраняем ответ в истории (assistant)
-    roomData.aiMessages.push({
-      role: 'assistant',
-      content: text
-    });
+
+    // Сохраняем запрос пользователя и ответ бота в историю
+    roomData.aiMessages.push({ role: 'user', content: userPrompt });
+    roomData.aiMessages.push({ role: 'assistant', content: text });
     
-    const match = text.match(/Индекс:\s*(\d+)/i);
+    const match = text.match(/\d+/);
     if (match) {
-      const parsedIndex = parseInt(match[1], 10);
+      const parsedIndex = match ? parseInt(match[0], 10) : NaN;
  
       if (!isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex <= 8) {
+        // Записываем ход бота в историю
+        roomData.moves.push({
+          moveNumber: roomData.moves.length + 1, // Номер хода
+          player: 'AI-bot',                        // Кто сделал ход
+          role: role,                           // Символ (X или O)
+          position: parsedIndex,                // Индекс на доске
+        });
+
         return parsedIndex;
       }
-    }
-    
-    if (!isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex <= 8) {
-      return parsedIndex;
     }
   } catch (err) {
     console.error('OpenAI error:', err);

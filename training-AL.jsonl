@@ -1,0 +1,134 @@
+{"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-X against player-O. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "Player-O moved to cell 4\nUpdated board state: ....O...."},
+    {"role": "assistant", "content": "0"},
+    {"role": "user", "content": "Player-O moved to cell 3\nUpdated board state: X..OO...."},
+    {"role": "assistant", "content": "5"},
+    {"role": "user", "content": "Player-O moved to cell 6\nUpdated board state: X..OOXO.."},
+    {"role": "assistant", "content": "2"},
+    {"role": "user", "content": "Player-O moved to cell 8\nUpdated board state: X.XOOXO.O"},
+    {"role": "assistant", "content": "1"},
+    {"role": "user", "content": "Player-X won by forming the winning line 0-1-2!"}
+    ]
+}
+
+{
+    "messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-O against player-X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "Player-X moved to cell 4\nUpdated board state: ....X...."},
+    {"role": "assistant", "content": "8"},
+    {"role": "user", "content": "Player-X moved to cell 2\nUpdated board state: ..X.X...O"},
+    {"role": "assistant", "content": "6"},
+    {"role": "user", "content": "Player-X moved to cell 7\nUpdated board state: ..X.X.OXO"},
+    {"role": "assistant", "content": "1"},
+    {"role": "user", "content": "Player-X moved to cell 3\nUpdated board state: .OXXX.OXO"},
+    {"role": "assistant", "content": "5"},
+    {"role": "user", "content": "Player-X moved to cell 0\nUpdated board state: XOXXXOOXO"}
+]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-X against player-O. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "Player-O moved to cell 4\nUpdated board state: ....O...."},
+    {"role": "assistant", "content": "0"},
+    {"role": "user", "content": "Player-O moved to cell 3\nUpdated board state: X..OO...."},
+    {"role": "assistant", "content": "5"},
+    {"role": "user", "content": "Player-O moved to cell 6\nUpdated board state: X..OOXO.."},
+    {"role": "assistant", "content": "2"},
+    {"role": "user", "content": "Player-O moved to cell 8\nUpdated board state: X.XOOXO.O"},
+    {"role": "assistant", "content": "1"},
+    {"role": "user", "content": "Player-X won by forming the winning line 0-1-2 !"}
+  ]}
+  
+  {"messages": [
+      {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-O against player-X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+      {"role": "user", "content": "Player-X moved to cell 1\nUpdated board state: .X......."},
+      {"role": "assistant", "content": "4"},
+      {"role": "user", "content": "Player-X moved to cell 2\nUpdated board state: .XX.O...."},
+      {"role": "assistant", "content": "0"},
+      {"role": "user", "content": "Player-X moved to cell 8\nUpdated board state: OXX.O...X"},
+      {"role": "assistant", "content": "5"},
+      {"role": "user", "content": "Player-X moved to cell 3\nUpdated board state: OXXXOO..X"},
+      {"role": "assistant", "content": "7"},
+      {"role": "user", "content": "Player-X moved to cell 6\nUpdated board state: OXXXOOXOX"}
+    ]}
+  
+
+  {"messages": [
+      {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-O against player-X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+      {"role": "user", "content": "Player-X moved to cell 3\nUpdated board state: ...X....."},
+      {"role": "assistant", "content": "4"},
+      {"role": "user", "content": "Player-X moved to cell 1\nUpdated board state: .X.XO...."},
+      {"role": "assistant", "content": "0"},
+      {"role": "user", "content": "Player-X moved to cell 2\nUpdated board state: OXXXO...."},
+      {"role": "assistant", "content": "8"},
+      {"role": "user", "content": "Player-O won by forming the winning line 0-4-8!"}
+    ]}
+
+  
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-O against player-X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "Player-O moved to cell 4\nUpdated board state: ....X...."},
+    {"role": "assistant", "content": "2"},
+    {"role": "user", "content": "Player-O moved to cell 6\nUpdated board state: ..O.X.X.."},
+    {"role": "assistant", "content": "5"},
+    {"role": "user", "content": "Player-O moved to cell 7\nUpdated board state: ..O.XOXX."},
+    {"role": "assistant", "content": "8"},
+    {"role": "user", "content": "Player-O won by forming the winning line  2-5-8 !"}
+  ]}
+  
+
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-X against player-O. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "Your step is first, board state : ........."},
+    {"role": "assistant", "content": "4"},
+    {"role": "user", "content": "Player-O moved to cell 5\nUpdated board state: ....XO..."},
+    {"role": "assistant", "content": "6"},
+    {"role": "user", "content": "Player-O moved to cell 2\nUpdated board state: ..O.XOX.."},
+    {"role": "assistant", "content": "8"},
+    {"role": "user", "content": "Player-O moved to cell 3\nUpdated board state: .OO.XOX.X"},
+    {"role": "assistant", "content": "7"},
+    {"role": "user", "content": "Player-X won by forming the winning line 6-7-8 !"}
+  ]}
+  
+
+
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-X against player-O. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "....O...."},
+    {"role": "assistant", "content": "0"}
+  ]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-X against player-O. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "X...O...."},
+    {"role": "assistant", "content": "5"}
+  ]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-X against player-O. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "X..OO...."},
+    {"role": "assistant", "content": "2"}
+  ]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player X against player-O. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "X..OOX..."},
+    {"role": "assistant", "content": "6"}
+  ]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-O against player-X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "..X.X...O"},
+    {"role": "assistant", "content": "6"}
+  ]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-O against player-X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "..X.X.O.O"},
+    {"role": "assistant", "content": "1"}
+  ]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player-O against player X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": ".OXXX.OXO"},
+    {"role": "assistant", "content": "5"}
+  ]}
+  {"messages": [
+    {"role": "system", "content": "You are the AI-player in tic-tac-toe for player O against player X. Each move, the User gives you a prompt as a string like '....X..O.' where the dot ('.') indicates a free cell (by index) where a move can be made. The board shows the marks of the User and your marks according to your roles. Analyze the board, make a move to win or at least force a draw! Your answer must be strictly a single number from 0 to 8 representing the chosen index for the move on the current board. Only the number, no letters."},
+    {"role": "user", "content": "OXXXO...O"},
+    {"role": "assistant", "content": "4"}
+  ]}
+  
