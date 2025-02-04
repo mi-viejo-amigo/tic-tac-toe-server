@@ -5,7 +5,6 @@ const createRoom = (room, gameMode) => {
   if (!rooms[room]) {
     rooms[room] = {
       gameMode,
-      history: [],
       aiMessages: [],
       moves: [],
       players: [],

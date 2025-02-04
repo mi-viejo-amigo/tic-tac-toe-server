@@ -1,3 +1,5 @@
+import e from "express";
+
 export const WINNING_COMBINATIONS = [
   [0, 1, 2], [3, 4, 5], [6, 7, 8], // Горизонтальные
   [0, 3, 6], [1, 4, 7], [2, 5, 8], // Вертикальные
@@ -165,26 +167,71 @@ export function formatMovesHistory(moves) {
   // `.trim();
 
   export function findStrategicMove(squares, role) {
-    const opponent = (role === 'X') ? 'O' : 'X';
-  
+    const opponent = role === 'X' ? 'O' : 'X';
+
+
     let winningMove = null;
     let blockingMove = null;
+    const recommendedMoves = {};
+    const notRecommendedMoves = {};
   
-    WINNING_COMBINATIONS.forEach(combination => {
-      const cells = combination.map(index => squares[index]);
+    for (const combination of WINNING_COMBINATIONS) {
+      let botCount = 0;
+      let opponentCount = 0;
+      const emptyCells = [];
   
-      const botCount = cells.filter(cell => cell === role).length;
-      const opponentCount = cells.filter(cell => cell === opponent).length;
-      const emptyCells = combination.filter(index => squares[index] === null);
+      for (const index of combination) {
+        if (squares[index] === role) botCount++;
+        else if (squares[index] === opponent) opponentCount++;
+        else emptyCells.push(index);
+      }
   
       if (botCount === 2 && emptyCells.length === 1) {
-        // Если у бота 2 клетки заняты, а 1 пустая – это победный ход
+        // console.log(`🎯 Найден победный ход: ${emptyCells[0]}`);
         winningMove = emptyCells[0];
-      } else if (opponentCount === 2 && emptyCells.length === 1) {
-        // Если у противника 2 клетки заняты, а 1 пустая – это угроза
+      }
+      if (opponentCount === 2 && emptyCells.length === 1) {
+        // console.log(`⚠ Найдена угроза, блокируем ход: ${emptyCells[0]}`);
         blockingMove = emptyCells[0];
       }
-    });
+      
+      if (botCount === 1 && opponentCount === 1 && emptyCells.length === 1) {
+        const cell = emptyCells[0];
+        notRecommendedMoves[cell] = (notRecommendedMoves[cell] || 0) + 1;
+      }
+      if (botCount === 1 && opponentCount === 0 && emptyCells.length === 2) {
+        emptyCells.forEach(cell => {
+          recommendedMoves[cell] = (recommendedMoves[cell] || 0) + 1;
+        });
+      }
+      if (botCount === 0 && opponentCount === 1 && emptyCells.length === 2) {
+        emptyCells.forEach(cell => {
+          recommendedMoves[cell] = (recommendedMoves[cell] || 0) + 1;
+        });
+      }
+    }
+    // console.log("Стратегического хода не найдено 🚫:", null);
+    // console.log("✅ Рекомендованные ходы:", recommendedMoves);
+    // console.log("🚫 Не рекомендуемые ходы:", notRecommendedMoves);
+
+    const strategicMove = winningMove || blockingMove;
   
-    return winningMove !== null ? winningMove : blockingMove;
+    return { strategicMove, recommendedMoves, notRecommendedMoves };
+  }
+
+  export function getTopMoves(recommendedMoves, notRecommendedMoves) {
+    // Получаем массив из рекомендуемых ходов, сортируем по убыванию значений
+    const sortedRecommended = Object.entries(recommendedMoves)
+      .sort((a, b) => b[1] - a[1]) // Сортировка по убыванию (лучшие ходы в начале)
+      .map(([key]) => Number(key)); // Берем только индексы (ключи)
+  
+    // Получаем массив из нерекомендуемых ходов, сортируем по убыванию значений
+    const sortedNotRecommended = Object.entries(notRecommendedMoves)
+      .sort((a, b) => b[1] - a[1]) // Сортировка по убыванию (худшие ходы в начале)
+      .map(([key]) => Number(key)); // Берем только индексы (ключи)
+  
+      return {
+        bestMoves: sortedRecommended.length > 0 ? sortedRecommended.slice(0, 2) : [],
+        worstMoves: sortedNotRecommended.length > 0 ? sortedNotRecommended.slice(0, 2) : [],
+      };
   }

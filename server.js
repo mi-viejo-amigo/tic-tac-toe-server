@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import { calculateWinner, WINNING_COMBINATIONS, formatMovesHistory, findStrategicMove } from './utils.js';
+import { calculateWinner, formatMovesHistory, findStrategicMove, getTopMoves } from './utils.js';
 import { handleWinner, resetRoomState, sendRoomState } from './gameHandlers.js';
 import { createRoom, getRoom, addPlayerToRoom, removePlayerFromRoom, isPlayerExist, createPlayer, logRooms } from './roomManager.js';
 
@@ -78,10 +78,6 @@ io.on('connection', (socket) => {
 
             const player = createPlayer(socket.id, name, roomData.players, roomData.gameMode);
 
-            // логируем юзера, что бы посмотреть скиллы.
-            console.log(player)
-            console.log(`${name} вошел в комнату ${room}, со скилами: ${JSON.stringify(player.skills || {})}`);
-            // 
             addPlayerToRoom(room, player);
 
             socket.join(room);
@@ -121,7 +117,6 @@ io.on('connection', (socket) => {
 
 
           if (player !== roomData.state.currentPlayer) {
-            console.log('Неправильный ход.');
             return;
           }
 
@@ -136,13 +131,10 @@ io.on('connection', (socket) => {
             });
             io.to(room).emit('locksUpdated', roomData.state.locks);
           }
-          console.log('Ход игрока', player, 'в клетку', index);
 
           // Обновляем состояние клетки
           roomData.state.squares[index] = marker;
           roomData.state.currentPlayer = player === 'X' ? 'O' : 'X';
-          const boardString = roomData.state.squares.map((v) => (v ? v : ".")).join("");
-          console.log('Обновленное состояние клеток:', boardString);
           // Проверяем победу
           const gameResult = calculateWinner(roomData.state.squares, roomData.gameMode);
           handleWinner(io, room, roomData, gameResult);
@@ -164,6 +156,14 @@ io.on('connection', (socket) => {
           const roomData = getRoom(room);
           resetRoomState(roomData, saveScores, updateSkills);
           sendRoomState(io, room, roomData, updateSkills, { winCombination: null, winner: null });
+          if( roomData.gameMode === 'AI_Standard' ) {
+            // Ищем бота
+            const botPlayer = roomData.players.find((p) => p.id === 'BOT_ID');
+            if (botPlayer.role === roomData.state.currentPlayer) {
+              // Вызываем ход бота
+              handleAiMove(io, room, roomData, botPlayer.role, null);
+            }
+          }
         });
 
         socket.on('disconnect', () => {
@@ -191,7 +191,7 @@ export async function handleAiMove(io, room, roomData, role, index) {
 
   // Попросим OpenAI выбрать индекс
   let aiIndex = await getAiIndexFromOpenAI(squares, role, roomData, usersStep);
-
+  
   // Если индекс некорректный или клетка занята, ставим в первую свободную
   if (
     aiIndex < 0 ||
@@ -204,7 +204,6 @@ export async function handleAiMove(io, room, roomData, role, index) {
     }
   }
 
-  roomData.history.push({client: usersStep, bot: aiIndex});
   // Ставим ход бота
   squares[aiIndex] = role;
   // Меняем ход на противника
@@ -232,38 +231,49 @@ async function getAiIndexFromOpenAI(squares, role, roomData, usersStep) {
     // Преобразуем доску в строку (для компактности)
     const boardString = squares.map((v) => (v ? v : ".")).join("");
 
-    // Добавляем ход в историю
-    roomData.moves.push({
-      moveNumber: roomData.moves.length + 1, // Номер хода
-      player: 'user',                       // Кто сделал ход ("user" или "bot")
-      role: opponent,                           // Символ (X или O)
-      position: usersStep,                   // Индекс на доске
-    });
-
-    const strategicMove = findStrategicMove(squares, role);
-    if (strategicMove !== null) {
-      console.log(`Strategic move found: ${strategicMove}`);
+    // Добавляем ход в историю если юзер ходил
+    if (usersStep) {
+      roomData.moves.push({
+        moveNumber: roomData.moves.length + 1, // Номер хода
+        player: 'user',                       // Кто сделал ход ("user" или "bot")
+        role: opponent,                           // Символ (X или O)
+        position: usersStep,                   // Индекс на доске
+      });
     }
+
+    // ТЯЖОЛОЕ ВЫЧИСЛЕНИЕ , СЧИТАЕМ ВОЗМОЖНЫЕ СТРАТЕГИИ
+    const {strategicMove, recommendedMoves, notRecommendedMoves} = findStrategicMove(squares, role);
 
     const movesHistory = formatMovesHistory(roomData.moves);
 
     // ---------- PROMPT ДЛЯ AI -----------
-    const userPrompt = 
-    strategicMove ?
-      `Y found strategic move for you, it is: ${strategicMove}, just return this value, no words`
-      : 
-      `
-      The game continues.
-      Moves history:
-      ${movesHistory}
-      
-      Your turn! Place ${role} on the board!
-      Last move by "User": ${opponent} played at position ${usersStep}.
-      Current board state: "${boardString}" (use . for empty cells).
-      Respond **only** with Index of cell you want to play, no words.
-    `.trim();
+    let userPrompt = "";
+    if (strategicMove) {
+      userPrompt = `Y found strategic move for you, it is: ${strategicMove}, just return this value, no words`;
+    } else {
+      const { bestMoves, worstMoves } = getTopMoves(recommendedMoves, notRecommendedMoves);
+      userPrompt = `
+        The game continues.
+        Moves history:
+        ${movesHistory}
 
+        **STRATEGY**
+        1. **Best recommended moves for you to place:**
+          ${squares[4] === null ? '- Ultimate good move: 4' : ''}
+          - First best move: ${bestMoves[0] ?? "none"}
+          - Second best move: ${bestMoves[1] ?? "none"}
+        
+        2. **Not recommended move (worst option):**
+          - First Worst move: ${worstMoves[0] ?? "none"}
+          - Second Worst move: ${worstMoves[1] ?? "none"}
 
+        Your turn! Place ${role} on the board!
+        ${usersStep ? `Last move by "User": ${opponent} played at position ${usersStep}.` : 'Your step is first.'}
+        Current board state: "${boardString}" (use . for empty cells).
+        
+        Respond **only** with the index of the cell you want to play, no words.
+      `.trim();
+    }
 
     // Собираем полный массив сообщений. В самом начале systemPrompt,
     // затем все старые сообщения roomData.aiMessages,
@@ -278,23 +288,25 @@ async function getAiIndexFromOpenAI(squares, role, roomData, usersStep) {
           1 **Strate moves**
            - If user says that he found strategic move for you, you can rely on it and return this value, no words.
           2 **STRATEGIC MOVES (ONLY IF NO THREAT OR WIN)**
-           - If the center (Index: 4) is empty, place "${role}" there.
+           - If the center (Index: 4) is empty, place "${role}" there even if it is not so recommended.
+           - Use the following recommended moves by User!
+           - Try to not use any option from moves that User **NOT RECOMENDED**.
           `,
       },
       // ... история (если есть)
-      ...roomData.aiMessages,
+      // ...roomData.aiMessages,
       { role: "user", content: userPrompt },
     ];
 
     
-
-        // Запрос к OpenAI
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: conversation,
-        });
+      // Запрос к OpenAI
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: conversation,
+      });
 
     const text = completion.choices[0].message?.content?.trim() || '';
+
 
     // Сохраняем запрос пользователя и ответ бота в историю
     roomData.aiMessages.push({ role: 'user', content: userPrompt });

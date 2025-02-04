@@ -59,9 +59,7 @@ export const sendRoomState = (io, room, roomData, updeteSkills = false, override
     roomData.state.squares = Array(9).fill(null);
     roomData.state.currentPlayer = Math.random() > 0.5 ? 'X' : 'O';
     if (roomData.gameMode === 'AI_Standard') {
-      roomData.state.currentPlayer = 'X'
       roomData.aiMessages = [];
-      roomData.history = [];
       roomData.moves = [];
       
     }
